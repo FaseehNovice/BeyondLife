@@ -1,0 +1,350 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package entity;
+
+import core.Camera;
+import core.InputHandler;
+import java.awt.Graphics2D;
+import java.awt.event.KeyEvent;
+
+/**
+ * The boss enemy
+ *
+ *  Dormant - The boss is dormant -> fight begins once challenged
+ *  Patrol - Moves towards the player
+ *  Slam - Jumps and slams the ground creating a shockwave
+ *  Vulnerable - can take damage during this state
+ * 
+ * @author EDEN COMPUTERS
+ */
+public class Boss extends Entity{
+
+    // ----------- Characteristics ----------------------- 
+    private final static int BOSS_H = 210;
+    private final static int BOSS_W  = 120;
+
+    //---------------- Health ------------------------ 
+    private final static int BOSS_MAX_HP = 50;
+
+    //--------------------- Physics -------------------------------
+    private final float GRAVITY = 1100f;
+    private final float WALK_SPEED = 220f;
+    private final int groundY;
+    private boolean onGround = false;
+
+    private enum State { DORMANT, PATROL, LEAP, SLAM, VULNERABLE }
+    private State state = State.DORMANT;
+
+    //------------------- Fight trigger --------------------------
+    private final float TRIGGER_RANGE = 160f;
+    private boolean fightStarted = false;
+
+    /**
+     * Sub-states of the {@code LEAP} attack, tracked as a single enum
+     * instead of multiple independent booleans to guarantee only one
+     * phase of the leap is ever active at a time.
+     */
+    private enum LeapPhase { RISING, HANGING, ARCING }
+    private LeapPhase leapPhase = LeapPhase.RISING;
+
+    //-------------------- Patrol -----------------------
+    private float patrolTimer = 0;
+    private int patrolDir = 1;
+    private final float PATROL_DURATION = 2f;
+
+    //--------------------- Slam ----------------------
+    private float slamTimer = 0;
+    private final float SLAM_DURATION = 0.7f;
+
+    //----------------- Leap tuning -------------------------------
+    private float hangTimer = 0;
+    private final float HANG_DURATION = 0.6f;
+    private final float HANG_THRESHOLD_Y = 40f;
+    private final float LEAP_LAUNCH_VY = -750f;
+    private final float SLAM_GRAVITY = 900f;
+    private final float ARC_START_VY = 120f;
+    private final float ARC_DURATION = 0.35f;
+
+    private float leapTargetX = 0f;
+
+    //----------------- Vulnerable window --------------------------
+    private float vulnerableTimer = 0;
+    private final float VULN_DURATION = 3.0f;
+
+    //---------------------- Beam --------------------------
+    private boolean beamActive = false;
+    private float beamLeftX, beamRightX;
+    private float beamOriginX, beamOriginY;
+    private final int SLAB_WIDTH = 22;
+    private final int SLAB_HEIGHT = 240;
+    private final float BEAM_SPEED_MAX = 900f;
+    private final float BEAM_SPEED_MIN = 200f;
+    
+    private final InputHandler input;
+
+    //reference to player
+    private float playerX;
+    
+    // Room values to enforce clamping
+    private final int roomLeft;
+    private final int roomRight;
+    
+    /**
+     * Creates the boss centered horizontally on screen, standing on the ground.
+     */
+    public Boss(float x, float y, int groundY ,InputHandler input, int roomLeft, int roomRight){
+        super(x, y, BOSS_W, BOSS_H, BOSS_MAX_HP);
+        this.groundY = groundY;
+        this.input = input;
+        this.roomLeft = roomLeft;
+        this.roomRight = roomRight;
+    }
+
+    //----------------- Getters ----------------------
+
+    public boolean isBeamActive() { return beamActive; }
+    public float getBeamLeftX() { return beamLeftX; }
+    public float getBeamRightX() { return beamRightX; }
+    public float getBeamOriginY() { return beamOriginY; }
+    public int getSlabWidth() { return SLAB_WIDTH; }
+    public int getSlabHeight() { return SLAB_HEIGHT; }
+
+    /** 
+     * @return true once the fight has been triggered (boss is no longer dormant).
+     */
+    public boolean isFightStarted() { return fightStarted; }
+
+    /**
+     * Attempts to start the boss fight, Mantis-Lords-style: the boss
+     * sits inert in {@code DORMANT} until the player walks within
+     * 
+     *
+     * @param playerX player's current x position
+     * @return true if this call is what started the fight
+     */
+    public boolean tryStart(float playerX) {
+        if (fightStarted) return false;
+        
+        float dist = Math.abs((playerX) - (getLeft() + BOSS_W / 2f));
+        
+        if(input.isJustPressed(KeyEvent.VK_UP) && dist <= TRIGGER_RANGE){
+            fightStarted = true;
+            state = State.PATROL;
+            patrolTimer = 0;
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public void setPlayerPosition(float playerX){
+        this.playerX = playerX; 
+    }
+
+
+    /**
+     * Checks whether the given player hit box overlaps either side of the
+     * active beam slab.
+     *
+     * @param px player x
+     * @param py player y
+     * @param pw player hit box width
+     * @param ph player hit box height
+     * @return true if the player's hit box intersects either beam slab
+     */
+    public boolean beamHits(float px, float py, int pw, int ph) {
+        if (!beamActive) return false;
+        float pr = px + pw, pb = py + ph;
+        float slabTop = beamOriginY - SLAB_HEIGHT;
+
+        boolean verticallyInBeam = pb > slabTop && py < beamOriginY;
+        if (!verticallyInBeam) return false;
+
+        boolean hitsRight = pr > beamRightX && px < beamRightX + SLAB_WIDTH;
+        boolean hitsLeft  = pr > beamLeftX - SLAB_WIDTH && px < beamLeftX;
+        return hitsRight || hitsLeft;
+    }
+
+    /** 
+     * Applies gravity (boosted while slam-falling) and resolves ground contact.
+     */
+    private void updateVerticalPhysics(float dt) {
+        boolean falling = state == State.LEAP && leapPhase == LeapPhase.ARCING;
+        if (!onGround && !(state == State.LEAP && leapPhase == LeapPhase.HANGING)) {
+            float g = falling ? GRAVITY + SLAM_GRAVITY : GRAVITY;
+            setVelY(getVelY() + g * dt);
+        }
+
+        setY(getTop() + getVelY() * dt);
+
+        if (getBottom() >= groundY ) {
+            setY(groundY - BOSS_H);
+            setVelY(0);
+            boolean wasLeaping = !onGround && state == State.LEAP;
+            onGround = true;
+            if (wasLeaping) {
+                enterSlam();
+            }
+        } else {
+            onGround = false;
+        }
+    }
+
+    /** Clamps the boss to the screen and flips patrol direction at the edges. */
+    private void enforceScreenBounds() {
+        if (getLeft() < roomLeft) {
+            setX(roomLeft);
+            setVelX(0);
+            patrolDir = 1;
+        }
+        if (getLeft() > roomRight - BOSS_W) {
+            setX(roomRight - BOSS_W);
+            setVelX(0);
+            patrolDir = -1;
+        }
+    }
+
+    /** Walks toward the player and counts down to the next leap. */
+    private void updatePatrol(float dt, float playerX) {
+        patrolDir = (playerX > getLeft()) ? 1 : -1;
+        setX(getLeft() + WALK_SPEED * patrolDir * dt);
+        patrolTimer += dt;
+        if (patrolTimer >= PATROL_DURATION) {
+            patrolTimer = 0;
+            enterLeap(playerX);
+        }
+    }
+
+    /** Begins the leap: launches upward and resets the leap sub-state. */
+    private void enterLeap(float playerX) {
+        state = State.LEAP;
+        leapPhase = LeapPhase.RISING;
+        onGround = false;
+        hangTimer = 0;
+        leapTargetX = playerX;
+        setVelX(0);
+        setVelY(LEAP_LAUNCH_VY);
+    }
+
+    /**
+     * Drives the leap's three sub-phases:
+     */
+    private void updateLeap(float dt){
+        switch (leapPhase) {
+            case RISING -> {
+                if (getVelY() >= 0 && getTop() < groundY - BOSS_H - HANG_THRESHOLD_Y) {
+                    leapPhase = LeapPhase.HANGING;
+                    setVelY(0);
+                }
+            }
+            case HANGING -> {
+                setVelY(0);
+                hangTimer += dt;
+                if (hangTimer >= HANG_DURATION) {
+                    leapPhase = LeapPhase.ARCING;
+                    float distX = leapTargetX - getLeft();
+                    setVelX(distX / ARC_DURATION);
+                    setVelY(ARC_START_VY);
+                }
+            }
+            case ARCING -> setX(getLeft() + getVelX() * dt);
+        }
+    }
+
+    /** Transitions from landing into the slam recovery + beam attack. */
+    private void enterSlam() {
+        state = State.SLAM;
+        slamTimer = 0;
+        setVelX(0);
+
+        beamActive = true;
+        beamOriginX = getLeft() + BOSS_W / 2f;
+        beamOriginY = groundY;
+        beamRightX = beamOriginX;
+        beamLeftX = beamOriginX;
+    }
+
+    /** Counts down the post-landing recovery before the vulnerable window opens. */
+    private void updateSlam(float dt) {
+        slamTimer += dt;
+        if (slamTimer >= SLAM_DURATION) enterVulnerable();
+    }
+
+    private void enterVulnerable() {
+        state = State.VULNERABLE;
+        vulnerableTimer = 0;
+        setVelX(0);
+    }
+
+    /** Counts down the vulnerable window before returning to patrol. */
+    private void updateVulnerable(float dt) {
+        vulnerableTimer += dt;
+        if (vulnerableTimer >= VULN_DURATION) {
+            state = State.PATROL;
+            patrolTimer = 0;
+        }
+    }
+
+    /**
+     * Expands both beam slabs outward from the origin point. Beam speed
+     * scales down as the slabs get farther from the origin, so the beam
+     * starts fast and decelerates as it approaches the screen edges.
+     */
+    private void updateBeam(float dt) {
+        float distRight = beamRightX - beamOriginX;
+        float distLeft = beamOriginX - beamLeftX;
+        float maxDist = Math.max(distRight, distLeft);
+
+        float roomWidth = roomRight - roomLeft;
+        float t = Math.min(maxDist / roomWidth, 1f);
+        float speed = BEAM_SPEED_MAX + (BEAM_SPEED_MIN - BEAM_SPEED_MAX) * t;
+
+        beamRightX = Math.min(beamRightX + speed * dt, roomRight);
+        beamLeftX  = Math.max(beamLeftX - speed * dt, roomLeft);
+
+        boolean rightGone = beamRightX - SLAB_WIDTH > roomRight;
+        boolean leftGone = beamLeftX + SLAB_WIDTH < roomLeft;
+        if (rightGone && leftGone) beamActive = false;
+    }
+    
+    @Override
+    public void update(float deltaTime) {
+        if (!fightStarted) return; // inert until tryStart() wakes it up
+
+        updateVerticalPhysics(deltaTime);
+        enforceScreenBounds();
+
+        switch (state) {
+            case PATROL -> updatePatrol(deltaTime, playerX);
+            case LEAP -> updateLeap(deltaTime);
+            case SLAM -> updateSlam(deltaTime);
+            case VULNERABLE -> updateVulnerable(deltaTime);
+        }
+
+        if (beamActive) updateBeam(deltaTime);
+        
+    }
+
+    @Override
+    public void draw(Graphics2D g, Camera cam) {
+        
+        drawBoss(g, cam);
+        
+        if(beamActive)
+            drawBeam(g, cam);
+    }
+    
+    //--------------- Draw Helpers ---------------
+    
+    /** 
+     * Draws both beam slabs with a soft outer glow and a bright core + outline.
+     */
+    private void drawBeam(Graphics2D g, Camera cam){
+    }
+    
+    private void drawBoss(Graphics2D g, Camera cam){
+        
+    }
+}

@@ -245,6 +245,10 @@ public class Player extends Entity{
         }
     }
     
+    public void gainSoul(int amount) {
+        soul = Math.min(MAX_SOUL, soul + amount);
+    }
+    
     //------------ Getters ------------
     public boolean isDashing() {
         return dashing;
