@@ -34,12 +34,13 @@ public class PlayingState implements GameState {
     //------------------- Room ----------------------------
     private Room currentRoom;
     private boolean pendingTransition = false;
-    private String nextRoomId        = null;
+    private String nextRoomId = null;
 
     //------------------- Death ---------------------------
-    private boolean playerDead              = false;
-    private float deathTimer              = 0f;
-    private static final float DEATH_RESPAWN_DELAY = 2f;
+
+    private boolean playerDead = false;
+    private float deathTimer = 0f;
+    private static final float DEATH_RESPAWN_DELAY = 2.0f;
 
     //------------------- Win -----------------------------
     private boolean bossDefeated = false;
@@ -79,12 +80,13 @@ public class PlayingState implements GameState {
             return;
         }
 
-        player.update(dt);
         currentRoom.update(dt, player, camera);
+        player.update(dt);
 
         camera.follow( player.getLeft() + player.getWidth()  / 2f, player.getTop() + player.getHeight() / 2f, dt, currentRoom.roomW, currentRoom.roomH);
 
-        if (player.isDead()) {
+        if (player.isDead()){
+
             camera.shake(Camera.SHAKE_DURATION, Camera.SHAKE_MAGNITUDE);
             playerDead = true;
             handleDeath(dt);

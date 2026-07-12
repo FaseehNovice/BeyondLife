@@ -43,7 +43,6 @@ public class Bench extends Entity{
 
     public boolean updateInteraction(Player player, String roomID){
         
-        
         float playerCenter = (player.getLeft() + player.getRight()) / 2f;
         float benchCenter = (getLeft() + getRight()) / 2f;
         
@@ -52,6 +51,7 @@ public class Bench extends Entity{
         showPrompt = (distance <= INTERACT_DISTANCE);
         
         if(showPrompt && input.isJustPressed(KeyEvent.VK_UP)){
+            System.out.println("Player interacted with bench");
             sit(player,  roomID);
             return true;
         }

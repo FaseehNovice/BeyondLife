@@ -29,6 +29,7 @@ public class SaveData implements Serializable {
 
     public void writeToDisk() {
         try(ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(SAVE_PATH))){
+            System.out.println("Game Saved");
             out.writeObject(this);
             System.out.println("Game Saved");
         }catch(IOException e){

@@ -209,6 +209,7 @@ public class Player extends Entity implements ActionListener{
     //----------------- Jump -----------------------
     
     private void handleJump(float dt){
+
         if (input.isJustPressed(KeyEvent.VK_Z)) {
             if (onWall) {
                 jumps = 0;

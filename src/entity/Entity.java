@@ -162,6 +162,7 @@ public abstract class Entity {
             health = 0;
             isAlive = false;
         }
+        
         return isDead();
     }
     

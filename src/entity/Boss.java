@@ -37,7 +37,8 @@ public class Boss extends Entity implements ActionListener{
     public final static int BOSS_W = 140;
 
     //---------------- Health ------------------------ 
-    private final static int BOSS_MAX_HP = 75;
+
+    private final static int BOSS_MAX_HP = 250;
 
     //--------------------- Physics -------------------------------
     private final float GRAVITY = 1100f;
@@ -88,6 +89,7 @@ public class Boss extends Entity implements ActionListener{
     private boolean beamActive = false;
     private float beamLeftX, beamRightX;
     private float beamOriginX, beamOriginY;
+
     private final float BEAM_SPEED_MAX = 1500f;
     private final float BEAM_SPEED_MIN = 400f;
     
@@ -95,6 +97,7 @@ public class Boss extends Entity implements ActionListener{
     private final int shockBeamImageWidth = 204, shockBeamImageHeight = 116;
     private final int SLAB_WIDTH = shockBeamImageWidth;
     private final int SLAB_HEIGHT = shockBeamImageHeight;
+
     
     private final InputHandler input;
 
@@ -216,6 +219,11 @@ public class Boss extends Entity implements ActionListener{
     /**
      * Attempts to start the boss fight, Mantis-Lords-style: the boss
      * sits inert in Dormant until the player walks within
+<<<<<<< HEAD
+=======
+     * 
+     *
+>>>>>>> main
      * @param playerX player's current x position
      * @return true if this call is what started the fight
      */
@@ -389,6 +397,7 @@ public class Boss extends Entity implements ActionListener{
     public boolean takeDamage(int amount){
         if(state != State.VULNERABLE) return false;
         super.takeDamage(amount);
+
         SoundManager.playSfx("damageBoss");
         return true;
     }
