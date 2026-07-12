@@ -110,7 +110,7 @@ public class VillageRoom extends Room {
             "The bench is your best friend. Use it while you still can.",
             "Shaheer insists he built this village. Don't encourage him.",
             "Who's Shaheer, you ask?",
-            "He's my boyfriend.",
+            "He's my girlfriend.",
             "And we built this place together... though he'll tell you he did most of the work.",
             "Anyways, whatever happens next... don't say I didn't warn you."
         );
