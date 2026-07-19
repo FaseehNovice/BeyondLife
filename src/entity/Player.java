@@ -454,7 +454,7 @@ public class Player extends Entity implements ActionListener{
                 if (sheetX > 4 * spriteWidth)
                     isSlashing = false;
             }
-            case 1 -> sheetX = (sheetX > 10 * spriteWidth) ? 9 * spriteWidth : sheetX; // I didn't reset it to the 0th (1st) frame, because I don't want the death animation to repeat. You don't die twice, do you?
+            case 1 -> sheetX = (sheetX > 9 * spriteWidth) ? 9 * spriteWidth : sheetX;
             case 2 -> sheetX = (sheetX > 2 * spriteWidth) ? 0 : sheetX;
             case 3 -> sheetX = (sheetX > 9 * spriteWidth) ? 0 : sheetX;
             case 4 -> sheetX = (sheetX > 2 * spriteWidth) ? 0 : sheetX;

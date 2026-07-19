@@ -7,7 +7,6 @@ package room;
 import core.AssetManager;
 import core.Camera;
 import core.InputHandler;
-import core.TileManager;
 import entity.Bench;
 import entity.Player;
 import java.awt.Color;
