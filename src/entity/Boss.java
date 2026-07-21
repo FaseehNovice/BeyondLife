@@ -106,6 +106,7 @@ public class Boss extends Entity implements ActionListener{
     private Image dashEffectGif = AssetManager.getGif("/assets/sprites/boss/bossDash.gif");
     private final int dashGifWidth = 32 * 6, dashGifHeight = 32 * 6;
 
+
     //----------------- Barrage attack tuning -------------------------
     private float barrageTimer = 0;
     private final float BARRAGE_TELEGRAPH_DURATION = 0.4f;
@@ -117,7 +118,6 @@ public class Boss extends Entity implements ActionListener{
     private float boltFireCooldown = 0;
     private final List<BossBolt> bolts = new ArrayList<>();
     private Image boltGif = AssetManager.getGif("/assets/sprites/boss/bossBolt.gif");
- 
     
 
     //----------------- Vulnerable window --------------------------
@@ -554,7 +554,7 @@ public class Boss extends Entity implements ActionListener{
         float dir = (playerX > originX) ? 1 : -1;
         patrolDir = (int) dir;
         bolts.add(new BossBolt(originX, originY, BOLT_SPEED * dir));
-        SoundManager.playSfx("fireBolt"); // swap for a dedicated bolt sfx if one gets added
+        SoundManager.playSfx("fireBolt"); 
     }
 
     /** Advances all active bolts and culls any that have left the arena. */
